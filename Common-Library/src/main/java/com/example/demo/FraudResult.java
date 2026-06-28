@@ -12,6 +12,6 @@ import lombok.Setter;
 public class FraudResult {
 
     private int riskScore;
-    private String riskLevel;
+    private String fraudRiskLevel;
 
 }

@@ -15,4 +15,5 @@ public interface AIClient {
     @PostMapping("/api/ai/fraud-check")
     FraudResponse checkFraud(
             @RequestBody FraudCheckRequest request);
+
 }

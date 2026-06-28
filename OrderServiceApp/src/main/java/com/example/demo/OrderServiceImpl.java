@@ -76,18 +76,31 @@ public class OrderServiceImpl implements OrderService {
 		// Save order to database
 
 		Order savedOrder = orderRepository.save(order);
-		// Calculates the risk score using Order details and customer information 
+		// Calculates the risk score using Order details and customer information
 		checkFraudRisk(dto);
-		
-		// AI Call starts
-		FraudResult result =
-		        checkFraudRisk(dto);
 
-		savedOrder.setRiskScore(result.getRiskScore());
+		FraudResult result = checkFraudRisk(dto);
 
-		savedOrder.setFraudRiskLevel(result.getRiskLevel());
-		
+		order.setRiskScore(result.getRiskScore());
+		order.setFraudRiskLevel(result.getFraudRiskLevel());
+		// AI Call Starts
+		FraudResponse aiResponse = aiClient.checkFraud(
 
+				new FraudCheckRequest(
+
+						savedOrder.getCustomerAge(),
+
+						savedOrder.getPreviousOrders(),
+
+						savedOrder.getAmount(),
+
+						result.getFraudRiskLevel(),
+
+						result.getRiskScore()));
+
+		savedOrder.setFraudReason(aiResponse.getReason());
+
+		savedOrder.setRecommendation(aiResponse.getRecommendation());
 		// Short URL
 		String longUrl = "http://api-gateway:8080/api/orders/" + savedOrder.getId();
 		String shortUrl = urlShortenerClient.shortenURL(new UrlRequest(longUrl));
@@ -104,34 +117,34 @@ public class OrderServiceImpl implements OrderService {
 
 	private FraudResult checkFraudRisk(OrderRequestDTO dto) {
 
-	    int score = 0;
+		int score = 0;
 
-	    if (dto.getCustomerAge() < 18) {
-	        score += 20;
-	    } else if (dto.getCustomerAge() > 60) {
-	        score += 10;
-	    }
+		if (dto.getCustomerAge() < 18) {
+			score += 20;
+		} else if (dto.getCustomerAge() > 60) {
+			score += 10;
+		}
 
-	    if (dto.getAmount() != null &&
-	            dto.getAmount().doubleValue() > 100000) {
-	        score += 30;
-	    }
+		if (dto.getAmount() != null && dto.getAmount().doubleValue() > 100000) {
+			score += 30;
+		}
 
-	    if (dto.getPreviousOrders() == 0) {
-	        score += 20;
-	    }
+		if (dto.getPreviousOrders() == 0) {
+			score += 20;
+		}
 
-	    String level;
+		String level;
 
-	    if(score >= 70)
-	        level = "High";
-	    else if(score >= 40)
-	        level = "Medium";
-	    else
-	        level = "Low";
+		if (score >= 70)
+			level = "High";
+		else if (score >= 40)
+			level = "Medium";
+		else
+			level = "Low";
 
-	    return new FraudResult(score, level);
+		return new FraudResult(score, level);
 	}
+
 	private void publishOrderEvent(Order order) {
 		try {
 			orderEventPublisher.publishOrderCreatedEvent(order);

@@ -139,11 +139,17 @@ public class AIService {
 			String response = chatClient.prompt().system("""
 					You are a Fraud Detection Expert.
 					Return ONLY valid JSON.
-					""")
-					.user(user -> user.text(template).param("customerAge", String.valueOf(request.getCustomerAge()))
-							.param("previousOrders", String.valueOf(request.getPreviousOrders()))
-							.param("orderAmount", String.valueOf(request.getOrderAmount())))
-					.call().content();
+					""").user(user -> user.text(template)
+
+					.param("riskScore", String.valueOf(request.getRiskScore()))
+
+					.param("riskLevel", request.getFraudRiskLevel())
+
+					.param("customerAge", String.valueOf(request.getCustomerAge()))
+
+					.param("previousOrders", String.valueOf(request.getPreviousOrders()))
+
+					.param("orderAmount", request.getOrderAmount().toPlainString())).call().content();
 			logger.info("Fraud analysis completed in {} ms", System.currentTimeMillis() - startTime);
 			logger.info("AI Response:\n{}", response);
 			return convertToFraudResponse(response);
@@ -152,7 +158,7 @@ public class AIService {
 
 			logger.error("Fraud analysis failed", e);
 
-			return new FraudResponse(0, "UNKNOWN", "Unable to analyze risk", BigDecimal.valueOf(0));
+			return new FraudResponse("UNKNOWN", "Unable to analyze risk");
 		}
 	}
 
@@ -170,7 +176,7 @@ public class AIService {
 
 			logger.error("Failed to parse AI response", e);
 
-			return new FraudResponse(0, "UNKNOWN", "Unable to analyze risk", BigDecimal.valueOf(0));
+			return new FraudResponse("UNKNOWN", "Unable to analyze risk");
 		}
 	}
 }

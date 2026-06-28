@@ -18,5 +18,7 @@ public class FraudCheckRequest {
     private int customerAge;
     private int previousOrders;
     private BigDecimal orderAmount;
+    private String fraudRiskLevel;
+    private int riskScore;
 
 }
