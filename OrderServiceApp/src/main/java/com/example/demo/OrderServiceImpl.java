@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import java.math.BigDecimal;
 import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
@@ -53,11 +54,13 @@ public class OrderServiceImpl implements OrderService {
 		order.setCustomerName(dto.getCustomerName());
 
 		// Calculate amount from product price
-		order.setAmount(product.getPrice().multiply(java.math.BigDecimal.valueOf(dto.getQuantity())));
+		order.setAmount(product.getPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
+		dto.getAmount();
 
 		order.setDescription(dto.getDescription());
 		order.setMobileNumber(dto.getMobileNumber());
-
+		order.setCustomerAge(dto.getCustomerAge());
+		order.setPreviousOrders(dto.getPreviousOrders());
 		if (dto.getItems() != null) {
 			for (OrderItem item : dto.getItems()) {
 				item.setOrder(order); // ✅ VERY IMPORTANT
@@ -73,54 +76,17 @@ public class OrderServiceImpl implements OrderService {
 		// Save order to database
 
 		Order savedOrder = orderRepository.save(order);
-		// 🔥 AI CALL START
-		long start = System.nanoTime();
-
-		String aiPrompt = """
-				Analyze this order and detect fraud risk.
-
-				Product ID: %d
-				Quantity: %d
-				Amount: %s
-				Customer: %s
-
-				Return:
-				- Risk Level (LOW / MEDIUM / HIGH)
-				- Reason
-				""".formatted(
-				        savedOrder.getProductId(),
-				        savedOrder.getQuantity(),
-				        savedOrder.getAmount(),
-				        savedOrder.getCustomerName()
-				);
-
-				String aiResponse = aiClient.ask(aiPrompt);
-		long duration = System.nanoTime() - start;
-
-		logger.info("AI Response Time: {} ms", duration / 1_000_000);
-		logger.info("AI Response: {}", aiResponse);
+		// Calculates the risk score using Order details and customer information 
+		checkFraudRisk(dto);
 		
-		CompletableFuture<String> payment =
-			    CompletableFuture.supplyAsync(() -> {
-			        try {
-			            Payment paymentRequest = new Payment();
+		// AI Call starts
+		FraudResult result =
+		        checkFraudRisk(dto);
 
-			            paymentRequest.setUserId(savedOrder.getId());
-			            paymentRequest.setAmount(savedOrder.getAmount());
+		savedOrder.setRiskScore(result.getRiskScore());
 
-			            return "Payment Success";
-
-			        } catch (Exception e) {
-			            logger.error("Payment failed", e);
-			            return "Payment Failed";
-			        }
-			    });		
-
-
-		// (optional) store AI result
-		savedOrder.setAiAnalysis(aiResponse);
-
-		// 🔥 AI CALL END
+		savedOrder.setFraudRiskLevel(result.getRiskLevel());
+		
 
 		// Short URL
 		String longUrl = "http://api-gateway:8080/api/orders/" + savedOrder.getId();
@@ -136,6 +102,36 @@ public class OrderServiceImpl implements OrderService {
 
 	}
 
+	private FraudResult checkFraudRisk(OrderRequestDTO dto) {
+
+	    int score = 0;
+
+	    if (dto.getCustomerAge() < 18) {
+	        score += 20;
+	    } else if (dto.getCustomerAge() > 60) {
+	        score += 10;
+	    }
+
+	    if (dto.getAmount() != null &&
+	            dto.getAmount().doubleValue() > 100000) {
+	        score += 30;
+	    }
+
+	    if (dto.getPreviousOrders() == 0) {
+	        score += 20;
+	    }
+
+	    String level;
+
+	    if(score >= 70)
+	        level = "High";
+	    else if(score >= 40)
+	        level = "Medium";
+	    else
+	        level = "Low";
+
+	    return new FraudResult(score, level);
+	}
 	private void publishOrderEvent(Order order) {
 		try {
 			orderEventPublisher.publishOrderCreatedEvent(order);

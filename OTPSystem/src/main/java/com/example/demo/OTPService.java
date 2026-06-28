@@ -4,5 +4,5 @@ public interface OTPService {
 
     void generateOTP(OTPRequest request);
 
-    boolean validateOTP(OTPVerifyRequest request);
+    boolean validateOTP(OTPVerification request);
 }

@@ -20,7 +20,7 @@ public class OTPController {
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<String> verifyOTP(@RequestBody OTPVerifyRequest request) {
+    public ResponseEntity<String> verifyOTP(@RequestBody OTPVerification request) {
 
         boolean result = otpService.validateOTP(request);
 

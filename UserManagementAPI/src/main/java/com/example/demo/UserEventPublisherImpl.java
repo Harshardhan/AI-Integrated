@@ -64,4 +64,6 @@ public class UserEventPublisherImpl implements UserEventPublisher {
 
 		logger.info("Published USER_VERIFIED event for user ID: {}", user.getUserId());
 	}
+	
+	
 }

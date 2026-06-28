@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openai
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: openai
+
+  template:
+    metadata:
+      labels:
+        app: openai
+
+    spec:
+      imagePullSecrets:
+        - name: dockerhub-secret
+
+      containers:
+        - name: product-service
+          image: corejavapractice-openai:latest
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8102
+
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secret
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"

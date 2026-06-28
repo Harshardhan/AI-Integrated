@@ -25,7 +25,10 @@ public class OrderResponseDTO {
 	    private String productName;
 	    private BigDecimal price;
 	    private Integer quantity;
-	
+		private String fraudRiskLevel;
+		private int customerAge;
+		private int previousOrders;
+
 	    private String shortURL;
 
 }

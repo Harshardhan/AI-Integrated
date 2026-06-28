@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-otp-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-otp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-otp
+  template:
+    metadata:
+      labels:
+        app: mysql-otp
+    spec:
+      containers:
+        - name: mysql-otp
+          image: mysql:8
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "master"
+            - name: MYSQL_DATABASE
+              value: "otp_db"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-otp-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-otp-storage
+          persistentVolumeClaim:
+            claimName: mysql-otp-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-otp
+spec:
+  selector:
+    app: mysql-otp
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP

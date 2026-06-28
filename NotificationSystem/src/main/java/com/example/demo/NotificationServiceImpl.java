@@ -19,6 +19,7 @@ public class NotificationServiceImpl implements NotificationService {
 	private static final Logger logger = LoggerFactory.getLogger(NotificationServiceImpl.class);
 	private final NotificationRepository notificationRepository;
 
+	private EmailService emailService;
 	private final JavaMailSender mailSender;
 
 	public NotificationServiceImpl(NotificationRepository notificationRepository, JavaMailSender mailSender) {
@@ -42,6 +43,9 @@ public class NotificationServiceImpl implements NotificationService {
 		Notification savedNotification = notificationRepository.save(notification);
 
 		logger.info("Notification created with ID: {}", savedNotification.getId());
+		
+		emailService.sendWelcomeEmail(notification.getEmailId());
+		logger.info("Welcome email sent to: {}", notification.getEmailId());
 		return savedNotification;
 	}
 

@@ -18,19 +18,16 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
     	if (roleRepository.count() == 0) {
 			Role adminRole = new Role();
-			adminRole.setRoleName("ADMIN");
+			adminRole.setRoleName("ROLE_ADMIN");
 			adminRole.setDesignation("ADMINISTRATOR");
-			roleRepository.save(adminRole);
 
 			Role userRole = new Role();
-			userRole.setRoleName("USER");
+			userRole.setRoleName("ROLE_USER");
 			userRole.setDesignation("STANDARD USER");
-			roleRepository.save(userRole);
 			
 			Role managerRole = new Role();
-			managerRole.setRoleName("MANAGER");
+			managerRole.setRoleName("ROLE_MANAGER");
 			managerRole.setDesignation("MANAGER");
-			roleRepository.save(managerRole);
 			
 			roleRepository.saveAll(List.of(adminRole, userRole, managerRole));
 		}

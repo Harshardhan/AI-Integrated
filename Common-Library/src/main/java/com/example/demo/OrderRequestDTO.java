@@ -23,6 +23,10 @@ public class OrderRequestDTO {
 	private Long productId;
     @NotBlank(message = "Customer name is required")
     private String customerName;
+	private String fraudRiskLevel;
+	private int customerAge;
+	private int previousOrders;
+
 
     @Positive(message = "Amount must be greater than zero")
     private BigDecimal amount;

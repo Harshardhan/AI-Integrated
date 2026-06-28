@@ -1,15 +1,17 @@
 package com.example.demo;
 
 import java.util.HashSet;
-
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
@@ -21,14 +23,18 @@ public class UserServiceImpl implements UserService {
 	private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 	private final UserRepository userRepository;
 
+	private final BCryptPasswordEncoder passwordEncoder;
+
 	private final RoleRepository roleRepository;
 
 	private final OTPClient otpClient;
-	
+
 	private final UserEventPublisher userEventPublisher;
 
-	public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository, OTPClient otpClient, UserEventPublisher userEventPublisher) {
+	public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository, OTPClient otpClient,
+			UserEventPublisher userEventPublisher, BCryptPasswordEncoder passwordEncoder) {
 		this.userRepository = userRepository;
+		this.passwordEncoder = passwordEncoder;
 		this.roleRepository = roleRepository;
 		this.otpClient = otpClient;
 		this.userEventPublisher = userEventPublisher;
@@ -37,64 +43,103 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public UserResponseDTO createUser(UserRequestDTO userRequestDTO) {
 
+		// =========================
+		// VALIDATIONS
+		// =========================
+
 		if (userRepository.existsByEmail(userRequestDTO.getEmail())) {
 			throw new EmailAlreadyExistsException("Email already exists: " + userRequestDTO.getEmail());
+		}
+
+		if (userRepository.existsByMobileNumber(userRequestDTO.getMobileNumber())) {
+			throw new InValidUserException("Mobile number already exists: " + userRequestDTO.getMobileNumber());
 		}
 
 		if (userRepository.existsByUsername(userRequestDTO.getUsername())) {
 			throw new InValidUserException("Username already exists");
 		}
 
+		// =========================
+		// CREATE USER
+		// =========================
+
 		User user = new User();
+
 		user.setUsername(userRequestDTO.getUsername());
 		user.setEmail(userRequestDTO.getEmail());
-		user.setPassword(userRequestDTO.getPassword());
+
+		// Encrypt password
+		user.setPassword(passwordEncoder.encode(userRequestDTO.getPassword()));
+
 		user.setFirstName(userRequestDTO.getFirstName());
 		user.setLastName(userRequestDTO.getLastName());
 		user.setMobileNumber(userRequestDTO.getMobileNumber());
 		user.setAddress(userRequestDTO.getAddress());
 		user.setProfilePictureUrl(userRequestDTO.getProfilePictureUrl());
-		
+
+		// Default status until OTP verification
+		user.setStatus(UserStatus.PENDING_VERIFICATION);
+
+		// Default flags
+		user.setActive(false);
+		user.setLocked(false);
+		user.setExpired(false);
+
+		// No roles assigned yet, will be done after OTP verification
+		user.setRoles(new HashSet<>());
+
+		// =========================
+		// SAVE USER
+		// =========================
 
 		User savedUser = userRepository.save(user);
 
-		// ✅ Correct Feign DTO
+		logger.info("User created successfully with ID: {}", savedUser.getUserId());
+
+		// =========================
+		// SEND OTP
+		// =========================
+
 		OTPRequest otpRequest = new OTPRequest(savedUser.getEmail(), savedUser.getMobileNumber());
-		
+
 		try {
+
 			otpClient.sendOTP(otpRequest);
+
+			logger.info("OTP sent successfully for user ID: {}", savedUser.getUserId());
+
 		} catch (Exception e) {
-			logger.error("OTP service failed: {}", e.getMessage());
 
-			// 🔥 OPTION 1: Rollback user creation
-			throw new RuntimeException("User created but OTP failed. Please retry");
+			logger.error("OTP service failed for user ID: {} : {}", savedUser.getUserId(), e.getMessage());
 
-			// 🔥 OPTION 2 (Better in real world):
-			// mark user as INACTIVE and retry later
+			// Optional:
+			// keep user in pending state and retry later
+
+			throw new RuntimeException("OTP service unavailable. Please try again later.");
 		}
 
-		// ✅ Publish Kafka event after successful user creation and OTP trigger
+		// =========================
+		// PUBLISH EVENT
+		// =========================
+
 		userEventPublisher.publishUserCreatedEvent(savedUser);
-		logger.info("User created & OTP triggered for ID: {}", savedUser.getUserId());
+
+		logger.info("USER_REGISTERED event published for user ID: {}", savedUser.getUserId());
+
+		// =========================
+		// RETURN RESPONSE
+		// =========================
 
 		return mapToResponseDTO(savedUser);
 	}
 
 	private UserResponseDTO mapToResponseDTO(User user) {
 
-		Set<String> roleNames = new HashSet<>();
-
-		if (user.getRoles() != null) {
-			for (Role role : user.getRoles()) {
-				if (role != null && role.getRoleName() != null) {
-					roleNames.add(role.getRoleName());
-				}
-			}
-		}
+		Set<String> roleNames = user.getRoles().stream().map(Role::getRoleName).collect(Collectors.toSet());
 
 		return new UserResponseDTO(user.getUserId(), user.getUsername(), user.getEmail(), user.getFirstName(),
-				user.getLastName(), user.getMobileNumber(), user.getAddress(), roleNames, user.getStatus(),
-				user.getProfilePictureUrl());
+				user.getLastName(), user.getMobileNumber(), user.getAddress(), roleNames, // <-- use role names
+				user.getStatus(), user.getProfilePictureUrl());
 	}
 
 	@Override
@@ -109,8 +154,7 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	@CacheEvict(value = "userById", key = "#userId")
-
+	@CacheEvict(value = "userById", key = "#id")
 	public UserResponseDTO updateUser(Long userId, UserRequestDTO userRequestDTO) {
 
 		User existingUser = userRepository.findById(userId).orElseThrow(() -> {
@@ -119,9 +163,9 @@ public class UserServiceImpl implements UserService {
 		});
 
 		if (userRepository.existsByUsername(userRequestDTO.getUsername())
-			    && !existingUser.getUsername().equals(userRequestDTO.getUsername())) {
-			    throw new InValidUserException("Username already exists");
-			}
+				&& !existingUser.getUsername().equals(userRequestDTO.getUsername())) {
+			throw new InValidUserException("Username already exists");
+		}
 		if (userRepository.existsByEmail(userRequestDTO.getEmail())
 				&& !existingUser.getEmail().equals(userRequestDTO.getEmail())) {
 
@@ -137,7 +181,7 @@ public class UserServiceImpl implements UserService {
 		existingUser.setAddress(userRequestDTO.getAddress());
 		existingUser.setProfilePictureUrl(userRequestDTO.getProfilePictureUrl());
 		existingUser.setStatus(userRequestDTO.getStatus());
-		existingUser.setPassword(userRequestDTO.getPassword());
+		existingUser.setPassword(passwordEncoder.encode(userRequestDTO.getPassword()));
 
 		User updatedUser = userRepository.save(existingUser);
 
@@ -241,6 +285,21 @@ public class UserServiceImpl implements UserService {
 	public List<UserResponseDTO> getUsersByStatus(UserStatus status) {
 		return userRepository.findByStatus(status).stream().map(this::mapToResponseDTO).toList();
 
+	}
+
+	@Override
+	public void activateUser(String emailId) {
+
+		User user = userRepository.findByEmail(emailId).orElseThrow(() -> {
+			logger.warn("User not found with email: {}", emailId);
+			return new UserNotFoundException("User not found with email: " + emailId);
+		});
+
+		user.setStatus(UserStatus.ACTIVE);
+		user.setActive(true);
+		userRepository.save(user);
+
+		logger.info("Activated user with email: {}", emailId);
 	}
 
 }

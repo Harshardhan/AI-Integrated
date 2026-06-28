@@ -11,7 +11,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 
-public class OTPVerifyRequest {
+public class OTPVerification {
     private String email;
     private String phoneNumber;
     private String otp;

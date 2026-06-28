@@ -6,6 +6,7 @@ import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,13 +16,15 @@ public class OTPServiceImpl implements OTPService {
 	private final StringRedisTemplate redisTemplate;
 	private final EmailService emailService;
 
+	private final KafkaTemplate<String, OtpVerifiedEvent> kafkaTemplate;
 	private static final int OTP_EXPIRY_MINUTES = 5;
 	private static final int MAX_REQUESTS = 3;
 	private static final int MAX_ATTEMPTS = 5;
 
-	public OTPServiceImpl(StringRedisTemplate redisTemplate, EmailService emailService) {
+	public OTPServiceImpl(StringRedisTemplate redisTemplate, EmailService emailService, KafkaTemplate<String, OtpVerifiedEvent> kafkaTemplate) {
 		this.redisTemplate = redisTemplate;
 		this.emailService = emailService;
+		this.kafkaTemplate = kafkaTemplate;
 	}
 
 	@Override
@@ -57,7 +60,7 @@ public class OTPServiceImpl implements OTPService {
 	}
 
 	@Override
-	public boolean validateOTP(OTPVerifyRequest request) {
+	public boolean validateOTP(OTPVerification request) {
 
 		String key = buildKey(request.getEmail(), request.getPhoneNumber());
 		String attemptKey = key + ":attempts";
@@ -84,11 +87,21 @@ public class OTPServiceImpl implements OTPService {
 		// ✅ Success → delete OTP
 		redisTemplate.delete(key);
 		redisTemplate.delete(attemptKey);
+		OtpVerifiedEvent event =
+		        new OtpVerifiedEvent();
+
+		event.setEmailId(request.getEmail());
+
+		
 		// After OTP success
-		emailService.sendWelcomeEmail(request.getEmail());
 		logger.info("OTP validated successfully for email: {}", request.getEmail());
 
 		logger.info("OTP was validated succesffully", storedOtp);
+		logger.info("Publishing OTP verified event");
+		
+		kafkaTemplate.send(
+		        "otp-verified-topic",
+		        event);
 		return true;
 	}
 

@@ -6,6 +6,7 @@ import java.util.Set;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,6 +26,7 @@ public class UserRequestDTO {
 	private String email;
 
 	@NotBlank(message = "Password is required")
+	@Size(min = 6, message = "Password must be at least 6 characters long")
 	private String password;
 
 	private String firstName;
@@ -36,7 +38,7 @@ public class UserRequestDTO {
 
 	private String address;
 
-	private Set<String> roles;
+	private Set<Role> roles;
 
 	private Boolean active;
 	private Boolean locked;

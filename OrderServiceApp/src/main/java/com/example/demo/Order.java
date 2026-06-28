@@ -20,8 +20,8 @@ import lombok.Setter;
 
 @Entity
 @Table(name="orders")
-@Getter
 @Setter
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class Order {
@@ -29,7 +29,10 @@ public class Order {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	private String aiAnalysis;
+	private String fraudRiskLevel;
+	private int riskScore;
+	private int customerAge;
+	private int previousOrders;
 	private Long productId;
 	private String customerName;
 	 private String  shortURL;

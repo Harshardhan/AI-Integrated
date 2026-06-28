@@ -32,6 +32,7 @@ public class NotificationController {
 		logger.info("Received request to create notification for email ID: {}", notification.getEmailId());
 		Notification createdNotification = notificationService.createNotification(notification);
 		logger.info("Notification created successfully with ID: {}", createdNotification.getId());
+		
 		return ResponseEntity.ok(createdNotification);
 	}
 

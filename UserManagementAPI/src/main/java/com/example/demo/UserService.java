@@ -30,4 +30,8 @@ public interface UserService {
 
     List<UserResponseDTO> getUsersByStatus(UserStatus status);
 
+	void activateUser(String emailId);
+
+
+
 }

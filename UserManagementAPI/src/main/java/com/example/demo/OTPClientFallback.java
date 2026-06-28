@@ -14,7 +14,7 @@ public class OTPClientFallback implements OTPClient {
     }
 
     @Override
-    public ResponseEntity<String> verifyOTP(OTPVerifyRequest request) {
+    public ResponseEntity<String> verifyOTP(OTPVerification request) {
         return ResponseEntity
                 .internalServerError()
                 .body("OTP verification failed. Service unavailable.");

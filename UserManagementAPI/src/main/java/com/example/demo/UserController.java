@@ -29,14 +29,14 @@ public class UserController {
 		this.userService = userService;
 	}
 
-	@PostMapping("/create")
+	@PostMapping()
 	public ResponseEntity<UserResponseDTO> createUser(@RequestBody @Valid UserRequestDTO userRequestDTO) {
 		logger.info("Received request to create user: {}", userRequestDTO.getUsername());
 		UserResponseDTO createdUser = userService.createUser(userRequestDTO);
 		return ResponseEntity.ok(createdUser);
 	}
 
-	@PutMapping("/update/{userId}")
+	@PutMapping("/{userId}")
 	public ResponseEntity<UserResponseDTO> updateUser(@PathVariable Long userId,
 			@RequestBody @Valid UserRequestDTO userRequestDTO) {
 		logger.info("Received request to update user: {}", userRequestDTO.getUsername());
@@ -86,14 +86,14 @@ public class UserController {
 		return ResponseEntity.ok(users);
 	}
 
-	@PostMapping("/{userId}/assignRole/{roleId}")
+	@PostMapping("/{userId}/roles/{roleId}")
 	public ResponseEntity<UserResponseDTO> assignRoleToUser(@PathVariable Long userId, @PathVariable Long roleId) {
 		logger.info("Received request to assign role with ID: {} to user with ID: {}", roleId, userId);
 		UserResponseDTO updatedUser = userService.assignRoleToUser(userId, roleId);
 		return ResponseEntity.ok(updatedUser);
 	}
 	
-	@DeleteMapping("/{userId}/removeRole/{roleId}")
+	@DeleteMapping("/{userId}/roles/{roleId}")
 	public ResponseEntity<UserResponseDTO> removeRoleFromUser(@PathVariable Long userId, @PathVariable Long roleId) {
 		logger.info("Received request to remove role with ID: {} from user with ID: {}", roleId, userId);
 		UserResponseDTO updatedUsers = userService.removeRoleFromUser(userId, roleId);

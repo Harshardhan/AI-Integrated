@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  LOGSTASH_HOST: logstash
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+  LOG_PATH: /app/logs
+  OTP_DB: otp_db
+  PRODUCT_DB: product_db
+  DATABASE_USERNAME: root

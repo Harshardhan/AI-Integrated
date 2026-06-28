@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
     name = "otp-service",
-    url = "${OTP_SERVICE_URL}",
+    
     fallback = OTPClientFallback.class
 )
 public interface OTPClient {
@@ -16,5 +16,5 @@ public interface OTPClient {
     ResponseEntity<String> sendOTP(@RequestBody OTPRequest request);
 
     @PostMapping("/api/otp/verify")
-    ResponseEntity<String> verifyOTP(@RequestBody OTPVerifyRequest request);
+    ResponseEntity<String> verifyOTP(@RequestBody OTPVerification request);
 }

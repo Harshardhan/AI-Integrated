@@ -1,9 +1,7 @@
 package com.example.demo;
 
+import java.util.HashSet;
 import java.util.Set;
-
-
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -42,8 +40,6 @@ public class User {
 	@Column(unique = true, nullable = false)
 	private String email;
 
-	@Column(nullable = false)
-	@Size(min = 6, max = 50)
 
 	private String password;
 
@@ -55,6 +51,8 @@ public class User {
 	private String mobileNumber;
 
 	private String address;
+	
+	private String otp;
 
 	@ManyToMany(fetch = FetchType.EAGER)
 	@JoinTable(
@@ -62,7 +60,7 @@ public class User {
 	    joinColumns = @JoinColumn(name = "user_id"),
 	    inverseJoinColumns = @JoinColumn(name = "role_id")
 	)
-	private Set<Role> roles;
+	private Set<Role> roles = new HashSet<>();
 	
 	private boolean active;
 
