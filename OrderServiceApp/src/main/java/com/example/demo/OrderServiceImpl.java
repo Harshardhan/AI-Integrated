@@ -48,73 +48,60 @@ public class OrderServiceImpl implements OrderService {
 			throw new ProductNotFoundException("Product not found");
 		}
 
+		// 1. Create Order
 		Order order = new Order();
+
+		// 2. Set fields
 		order.setProductId(dto.getProductId());
-		order.setQuantity(dto.getQuantity());
 		order.setCustomerName(dto.getCustomerName());
-
-		// Calculate amount from product price
-		order.setAmount(product.getPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
-		dto.getAmount();
-
-		order.setDescription(dto.getDescription());
-		order.setMobileNumber(dto.getMobileNumber());
 		order.setCustomerAge(dto.getCustomerAge());
 		order.setPreviousOrders(dto.getPreviousOrders());
-		if (dto.getItems() != null) {
-			for (OrderItem item : dto.getItems()) {
-				item.setOrder(order); // ✅ VERY IMPORTANT
-			}
-		}
-
+		order.setQuantity(dto.getQuantity());
+		order.setMobileNumber(dto.getMobileNumber());
+		order.setDescription(dto.getDescription());
 		order.setItems(dto.getItems());
-		// 🔥 FIX ENDS HERE
+		order.setAmount(product.getPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
+		
 
-		logger.info("Order created successfully");
-		logger.info("Product details: {}", product);
+		// 3. Calculate amount
 
-		// Save order to database
-
-		Order savedOrder = orderRepository.save(order);
-		// Calculates the risk score using Order details and customer information
-		checkFraudRisk(dto);
-
+		// 4. Calculate fraud score
 		FraudResult result = checkFraudRisk(dto);
 
 		order.setRiskScore(result.getRiskScore());
 		order.setFraudRiskLevel(result.getFraudRiskLevel());
-		// AI Call Starts
+
+		// 5. AI explanation
 		FraudResponse aiResponse = aiClient.checkFraud(
+		    new FraudCheckRequest(
+		        order.getCustomerAge(),
+		        order.getPreviousOrders(),
+		        order.getAmount(),
+		        result.getFraudRiskLevel(),
+		        result.getRiskScore()
+		    )
+		);
 
-				new FraudCheckRequest(
+		order.setFraudReason(aiResponse.getReason());
+		order.setRecommendation(aiResponse.getRecommendation());
 
-						savedOrder.getCustomerAge(),
+		// 6. Save order
+		Order savedOrder = orderRepository.save(order);
 
-						savedOrder.getPreviousOrders(),
-
-						savedOrder.getAmount(),
-
-						result.getFraudRiskLevel(),
-
-						result.getRiskScore()));
-
-		savedOrder.setFraudReason(aiResponse.getReason());
-
-		savedOrder.setRecommendation(aiResponse.getRecommendation());
-		// Short URL
+		// 7. Generate short URL (needs generated ID)
 		String longUrl = "http://api-gateway:8080/api/orders/" + savedOrder.getId();
 		String shortUrl = urlShortenerClient.shortenURL(new UrlRequest(longUrl));
 
 		savedOrder.setShortURL(shortUrl);
 
-		orderRepository.save(savedOrder);
+		// 8. Save again to update short URL
+		savedOrder = orderRepository.save(savedOrder);
 
+		// 9. Publish event
 		publishOrderEvent(savedOrder);
 
 		return savedOrder;
-
 	}
-
 	private FraudResult checkFraudRisk(OrderRequestDTO dto) {
 
 		int score = 0;

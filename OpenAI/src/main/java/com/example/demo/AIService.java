@@ -1,13 +1,12 @@
 package com.example.demo;
 
-import java.math.BigDecimal;
-
 import org.slf4j.Logger;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class AIService {
@@ -19,12 +18,12 @@ public class AIService {
 	private static final String SYSTEM_PROMPT = """
 			You are a Senior Java Architect and Spring Boot expert.
 
-			Rules:
-			- Give practical answers.
-			- Use real-world examples.
-			- Be technically accurate.
-			- Keep responses concise.
-			""";
+						Rules:
+						- Give practical answers.
+						- Use real-world examples.
+						- Be technically accurate.
+						- Keep responses concise.
+						""";
 
 	private final ChatClient chatClient;
 
@@ -32,27 +31,39 @@ public class AIService {
 		this.chatClient = builder.build();
 	}
 
-	public String ask(String topic) {
+	public String ask(String request) {
 
+		logger.info("Received ask request: {}", request);
 		String template = """
-				Topic: {topic}
+				Question:
+				{question}
 
-				Format the response exactly as:
+				Please answer the question using the following format:
 
-				## Definition
+				1. Definition
+				2. Architecture
+				3. Working
+				4. Real-world Example
+				5. Spring Boot Example (if applicable)
+				6. Best Practices
+				7. Common Mistakes
+				8. Interview Questions
 
-				## Real World Example
+				Rules:
 
-				## Production Usage
-
-				## Interview Questions
-
-				Requirements:
-				- Use Java and Spring Boot examples
-				- Keep response under 300 words
+				- Maximum 200 words
+				- Use simple English
+				- Include a simple ASCII diagram when applicable
+				- Use Java 21
+				- Use Spring Boot 3.x examples
+				- Do not invent APIs or libraries.
 				""";
+		String response = chatClient.prompt().system(SYSTEM_PROMPT).
 
-		return executePrompt(topic, template);
+				user(user -> user.text(template).param("question", request)).call().content();
+		logger.debug("AI Response: {}", response);
+		return response;
+
 	}
 
 	public String interview(String topic) {
@@ -74,22 +85,22 @@ public class AIService {
 				- Focus on {topic}
 				- Use production examples where applicable
 				- Keep answers concise
+				- keep under 200 words
 				""";
 
+		logger.info("Received interview request for topic: {}", topic);
 		return executePrompt(topic, template);
 	}
 
-	private String executePrompt(String topic, String template) {
-
+	private String executePrompt(String request, String template) {
 		long startTime = System.currentTimeMillis();
 
 		try {
 
-			logger.info("Sending request to AI. Topic={}", topic);
+			logger.info("Sending request to AI. Topic={}", request);
 
 			String response = chatClient.prompt().system(SYSTEM_PROMPT)
-					.user(user -> user.text(template).param("topic", topic)).call().content();
-
+					.user(user -> user.text(template).param("topic", request)).call().content();
 			logger.info("AI response received in {} ms", System.currentTimeMillis() - startTime);
 
 			return response;
@@ -115,50 +126,55 @@ public class AIService {
 
 					The fraud score has already been calculated.
 
-					Risk Score : {riskScore}
+					Risk Score: {riskScore}
 
-					Risk Level : {riskLevel}
+					Risk Level: {riskLevel}
 
-					Customer Age : {customerAge}
+					Customer Age: {customerAge}
 
-					Previous Orders : {previousOrders}
+					Previous Orders: {previousOrders}
 
-					Order Amount : {orderAmount}
+					Order Amount: {orderAmount}
 
 					Explain:
 
 					1. Why this score was assigned.
 					2. Give one recommendation.
 
-					Return ONLY JSON.
+					Return ONLY valid JSON.
 
-					{
-					  "reason":"",
-					  "recommendation":""
-					}				""";
+					The JSON must contain exactly these fields:
+
+					- reason
+					- recommendation
+
+					Do NOT return markdown.
+					Do NOT use code fences.
+					Do NOT add any extra text.
+					""";
+
 			String response = chatClient.prompt().system("""
 					You are a Fraud Detection Expert.
 					Return ONLY valid JSON.
-					""").user(user -> user.text(template)
+					""")
+					.user(user -> user.text(template).param("riskScore", String.valueOf(request.getRiskScore()))
+							.param("riskLevel", request.getFraudRiskLevel())
+							.param("customerAge", String.valueOf(request.getCustomerAge()))
+							.param("previousOrders", String.valueOf(request.getPreviousOrders()))
+							.param("orderAmount", request.getOrderAmount().toPlainString()))
+					.call().content();
 
-					.param("riskScore", String.valueOf(request.getRiskScore()))
-
-					.param("riskLevel", request.getFraudRiskLevel())
-
-					.param("customerAge", String.valueOf(request.getCustomerAge()))
-
-					.param("previousOrders", String.valueOf(request.getPreviousOrders()))
-
-					.param("orderAmount", request.getOrderAmount().toPlainString())).call().content();
 			logger.info("Fraud analysis completed in {} ms", System.currentTimeMillis() - startTime);
-			logger.info("AI Response:\n{}", response);
+
+			logger.info("AI Response: {}", response);
+
 			return convertToFraudResponse(response);
 
 		} catch (Exception e) {
 
 			logger.error("Fraud analysis failed", e);
 
-			return new FraudResponse("UNKNOWN", "Unable to analyze risk");
+			return new FraudResponse("Unable to determine fraud reason.", "Manual review recommended.");
 		}
 	}
 
@@ -176,7 +192,43 @@ public class AIService {
 
 			logger.error("Failed to parse AI response", e);
 
-			return new FraudResponse("UNKNOWN", "Unable to analyze risk");
+			return new FraudResponse("Unable to parse AI response.", "Manual review recommended.");
 		}
+	}
+
+	public RagResponse rag(RagRequest request) {
+
+		String prompt = """
+				You are an HR policy assistant.
+
+				Use ONLY the provided context.
+
+				If the answer is not present in the context,
+				reply exactly:
+
+				I don't know.
+
+				Keep the answer concise.
+
+				Context:
+				%s
+
+				Question:
+				%s
+				""".formatted(request.getContext(), request.getQuestion());
+		logger.info("=========== PROMPT ===========");
+		logger.info(prompt);
+		logger.info("==============================");
+		String answer = chatClient.prompt().system("""
+				    You are an HR assistant.
+
+				    Use ONLY the supplied context.
+
+				    If the answer is missing,
+				    reply exactly:
+
+				    I don't know.
+				""").user(prompt).call().content();
+		return new RagResponse(answer);
 	}
 }
