@@ -1,181 +1,143 @@
 services:
 
-  mysql-order:
-    image: mysql:8
-    container_name: mysql-order
-    environment:
-      MYSQL_ROOT_PASSWORD: master
-      MYSQL_DATABASE: order_db
+  # =================================
+  # CORE SERVICES
+  # =================================
+
+  eureka-server:
+    build:
+      context: ./EurekaServerApp
+      dockerfile: Dockerfile
+    container_name: eureka-server
     ports:
-      - "3307:3306"
+      - "8761:8761"
+    env_file:
+      - .env
     networks:
       - my-biz-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "curl", "-f", "http://localhost:8761/eureka/apps"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: ./API-Gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  config-server:
+    build:
+      context: ./ConfigServerApp
+      dockerfile: Dockerfile
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    env_file:
+      - .env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+#=======================================================
+#MICROSERVICES
+#=======================================================
+  product-service:
+    build:
+      context: ./ProductServiceApp
+      dockerfile: Dockerfile
+    container_name: product-service
+    ports:
+      - "8094:8094"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-product:
+        condition: service_started
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8094/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 
-  mysql-url-shortener:
-    image: mysql:8
-    container_name: mysql-url-shortener
-    environment:
-      MYSQL_ROOT_PASSWORD: master
-      MYSQL_DATABASE: url_shortener_db
-    ports:
-      - "3313:3306"
-    networks:
-      - my-biz-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 
-  mysql-notification:
-    image: mysql:8
-    container_name: mysql-notification
-    environment:
-      MYSQL_ROOT_PASSWORD: master
-      MYSQL_DATABASE: notifications_db
-    ports:
-      - "3311:3306"
-    networks:
-      - my-biz-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-
-
-  mysql-payment:
-    image: mysql:8
-    container_name: mysql-payment
-    environment:
-      MYSQL_ROOT_PASSWORD: master
-      MYSQL_DATABASE: paymentdb
-    ports:
-      - "3312:3306"
-    networks:
-      - my-biz-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-
-
-
-  mysql-user:
-    image: mysql:8
-    container_name: mysql-user
-    environment:
-      MYSQL_ROOT_PASSWORD: master
-      MYSQL_DATABASE: user_management_db
-    ports:
-      - "3308:3306"
-    networks:
-      - my-biz-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+#=====================================================
+#DATABASES
+#=====================================================
   mysql-product:
     image: mysql:8
     container_name: mysql-product
     environment:
-      MYSQL_ROOT_PASSWORD: master
-      MYSQL_DATABASE: productdb
-    ports:
-      - "3309:3306"
+       DATABASE_USERNAME: ${DATABASE_USERNAME}
+       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
     networks:
-      - my-biz-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mysql-otp:
-    image: mysql:8
-    container_name: mysql-otp
-    environment:
-      MYSQL_ROOT_PASSWORD: master
-      MYSQL_DATABASE: otp_db
-    ports:
-      - "3310:3306"
-    networks:
-      - my-biz-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+       - my-biz-network
+    restart: unless-stopped
 
 
+
+
+
+
+#====================================================
+#Monitoring & Loggigng
+#====================================================
+  
   redis:
     image: redis:7.4-alpine
     container_name: redis
     command: redis-server --requirepass master
-    networks: 
+    networks:
       - my-biz-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "master", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  ollama:
-    image: ollama/ollama
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    networks:
-      - my-biz-network
-    restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama     
-
-  zipkin:
-    image: openzipkin/zipkin
-    container_name: zipkin
-    ports:
-      - "9411:9411"
-    networks:
-      - my-biz-network
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "9090:9090"
-    networks:
-      - my-biz-network
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    networks:
-      - my-biz-network
-    restart: unless-stopped
-
-
-
-
-  # ======================= MESSAGING ========================
+      
+#====================================================
+#MESSAGING
+#====================================================
   zookeeper:
     image: confluentinc/cp-zookeeper:7.2.1
     container_name: zookeeper
@@ -189,185 +151,27 @@ services:
     image: confluentinc/cp-kafka:7.2.1
     container_name: kafka
     hostname: kafka
-    ports:
-      - "9092:9092"
     depends_on:
       - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
     networks:
       - my-biz-network
     restart: unless-stopped
-    
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
-
-
-  order-service:
-    build:
-      context: ./OrderServiceApp
-    container_name: order-service
-    ports:
-      - "8090:8090"
-    environment:
-      - PRODUCT_SERVICE_URL=http://product-service:8094
-      - URL_SHORTENER_SERVICE_URL=http://urlshortener-service:8079
-    networks:
-      - my-biz-network
-    depends_on:
-      mysql-order:
-        condition: service_healthy
-
-
-
-  urlshortener-service:
-    build:
-      context: ./URLShortener
-    container_name: urlshortener-service
-    ports:
-      - "8079:8079"
-    networks:
-      - my-biz-network
-    depends_on:
-      mysql-url-shortener:
-        condition: service_healthy
-
-
-  user-service:
-    build:
-      context: ./UserManagementAPI
-    container_name: user-service
-    ports:
-      - "8092:8092"
-    environment:
-      - OTP_SERVICE_URL=http://otp-service:8096
-
-    networks:
-      - my-biz-network
-    depends_on:
-      mysql-user:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-
-  otp-service:
-    build:
-      context: ./OTPSystem
-    container_name: otp-service
-    ports:
-      - "8096:8096"
-    networks:
-      - my-biz-network
-    depends_on:
-      mysql-otp:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-
-  notification-service:
-    build:
-      context: ./NotificationSystem
-    container_name: notification-service
-    ports:
-      - "8098:8098"
-    networks:
-      - my-biz-network
-    depends_on:
-      mysql-notification:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-
-
-
-  payment-service:
-    build:
-      context: ./PaymentServiceApp
-    container_name: payment-service
-    ports:
-      - "8100:8100"
-    networks:
-      - my-biz-network
-    depends_on:
-      mysql-payment:
-        condition: service_healthy
-      
-
-
-  product-service:
-    build:
-      context: ./ProductServiceApp
-    container_name: product-service
-    ports:
-      - "8094:8094"
-    networks:
-      - my-biz-network
-    depends_on:
-      mysql-product:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-
-  openai:
-    build:
-      context: ./OPENAI
-    container_name: openai
-    ports:
-      - "8102:8102"
-    networks:
-      - my-biz-network
-    depends_on:
-      eureka-server:
-        condition: service_healthy
-      ollama:
-        condition: service_started
-      
-
-  api-gateway:
-    build:
-      context: ./API-Gateway
-    container_name: api-gateway
-    ports:
-      - "8080:8080"
-    networks:
-      - my-biz-network
-    depends_on:
-      redis:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-
-
-  eureka-server:
-    build:
-      context: ./EurekaServerApp
-    container_name: eureka-server
-    ports:
-      - "8761:8761"
-    networks:
-      - my-biz-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
   
-volumes:
-  ollama_data:
+
+
+
+# =================================
+# NETWORKS
+# =================================
 
 networks:
   my-biz-network:
