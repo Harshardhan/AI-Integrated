@@ -217,6 +217,40 @@ services:
       retries: 5
 
 
+  payment-service:
+    build:
+      context: ./PaymentServiceApp
+      dockerfile: Dockerfile
+    container_name: payment-service
+    ports:
+      - "8100:8100"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-payment:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+
+
+
+
+
+
 
 
 #=====================================================
@@ -311,6 +345,23 @@ services:
       timeout: 5s
       retries: 10
 
+
+  mysql-payment:
+    image: mysql:8
+    container_name: mysql-payment
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: ${PAYMENTDB}
+    ports:
+      - "3313:3306"
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DATABASE_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 
 
