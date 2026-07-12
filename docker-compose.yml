@@ -189,6 +189,34 @@ services:
       retries: 5
 
 
+  notification-service:
+    build:
+      context: ./NotificationSystem
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "8098:8098"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-notification:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8098/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
 
 
 #=====================================================
@@ -266,6 +294,22 @@ services:
       retries: 10
 
 
+  mysql-notification:
+    image: mysql:8
+    container_name: mysql-notification
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: ${NOTIFICATIONS_DB}
+    ports:
+      - "3312:3306"
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DATABASE_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 
 
