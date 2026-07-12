@@ -97,6 +97,42 @@ services:
       retries: 5
 
 
+  urlshortener-service:
+    build:
+      context: ./URLShortener
+      dockerfile: Dockerfile
+    container_name: urlshortener-service
+    ports:
+      - "8079:8079"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      mysql-url-shortener:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8079/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+
+
+
+
+
+
   order-service:
     build:
       context: ./OrderServiceApp
@@ -363,6 +399,22 @@ services:
       timeout: 5s
       retries: 10
 
+  mysql-url-shortener:
+    image: mysql:8
+    container_name: mysql-url-shortener
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: ${URL_SHORTENER_DB}
+    ports:
+      - "3314:3306"
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DATABASE_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 
 
