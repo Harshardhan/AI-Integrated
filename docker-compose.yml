@@ -449,6 +449,7 @@ services:
     container_name: psql-openai
     environment:    
       POSTGRES_DB: ${VECTORDB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     networks:
@@ -477,6 +478,20 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "master", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", curl", "-f", "http://localhost:11434/api/tags"]
       interval: 5s
       timeout: 5s
       retries: 10
