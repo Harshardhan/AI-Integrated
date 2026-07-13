@@ -449,6 +449,7 @@ services:
     container_name: psql-openai
     environment:    
       POSTGRES_DB: ${VECTORDB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
