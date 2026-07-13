@@ -445,7 +445,7 @@ services:
 
 
   psql-openai:
-    image: mysql:8
+    image: pgvector:pg18
     container_name: psql-openai
     environment:
       
