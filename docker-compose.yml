@@ -281,6 +281,33 @@ services:
       retries: 5
 
 
+  open-ai:
+    build:
+      context: ./OPENAI
+      dockerfile: Dockerfile
+    container_name: open-ai
+    ports:
+      - "8102:8102"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      psql-openai:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8102/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 
 
 
@@ -415,6 +442,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+
+  psql-openai:
+    image: mysql:8
+    container_name: psql-openai
+    environment:
+      
+      PSQL_DATABASE: ${VECTORDB}
+    ports:
+      - "5432:5432"
+    networks:
+      - my-biz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 
 
 
