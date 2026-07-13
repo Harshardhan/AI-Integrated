@@ -445,18 +445,17 @@ services:
 
 
   psql-openai:
-    image: pgvector:pg18
+    image: pgvector/pgvector:pg18
     container_name: psql-openai
-    environment:
-      
-      PSQL_DATABASE: ${VECTORDB}
+    environment:    
+      POSTGRES_DB: ${VECTORDB}
     ports:
       - "5432:5432"
     networks:
       - my-biz-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+    healthcheck:   
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${VECTORDB}"]
       interval: 10s
       timeout: 5s
       retries: 10
