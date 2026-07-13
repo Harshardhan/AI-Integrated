@@ -404,7 +404,7 @@ services:
     container_name: mysql-url-shortener
     environment:
       MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
-      MYSQL_DATABASE: ${URL_SHORTENER_DB}
+      MYSQL_DATABASE: ${URL-SHORTENER-DB}
     ports:
       - "3314:3306"
     networks:
