@@ -39,5 +39,10 @@ public class AIController {
 	public RagResponse rag(@RequestBody RagRequest request) {
 		return aiService.rag(request);
 	}
+	
+	@PostMapping("/chat")
+	public String chat(@RequestBody String request) {
+		return aiService.chat(request);
+	}
 
 }

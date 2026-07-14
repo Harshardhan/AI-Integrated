@@ -122,36 +122,50 @@ public class AIService {
 			logger.info("Analyzing fraud risk for order amount={}", request.getOrderAmount());
 
 			String template = """
-					You are a fraud analyst.
+					You are an AI Fraud Detection System.
 
-					The fraud score has already been calculated.
+					Analyze the following order.
+										The fraud score has already been calculated.
 
-					Risk Score: {riskScore}
+					Customer Name:
+					Location:
+					Order Amount:
+					Payment Method:
+					Items:
 
-					Risk Level: {riskLevel}
+					Return only JSON.
 
-					Customer Age: {customerAge}
+					{
+					  "riskLevel":"",
+					  "reason":""
+					}
 
-					Previous Orders: {previousOrders}
+										Risk Score: {riskScore}
 
-					Order Amount: {orderAmount}
+										Risk Level: {riskLevel}
 
-					Explain:
+										Customer Age: {customerAge}
 
-					1. Why this score was assigned.
-					2. Give one recommendation.
+										Previous Orders: {previousOrders}
 
-					Return ONLY valid JSON.
+										Order Amount: {orderAmount}
 
-					The JSON must contain exactly these fields:
+										Explain:
 
-					- reason
-					- recommendation
+										1. Why this score was assigned.
+										2. Give one recommendation.
 
-					Do NOT return markdown.
-					Do NOT use code fences.
-					Do NOT add any extra text.
-					""";
+										Return ONLY valid JSON.
+
+										The JSON must contain exactly these fields:
+
+										- reason
+										- recommendation
+
+										Do NOT return markdown.
+										Do NOT use code fences.
+										Do NOT add any extra text.
+										""";
 
 			String response = chatClient.prompt().system("""
 					You are a Fraud Detection Expert.
@@ -230,5 +244,20 @@ public class AIService {
 				    I don't know.
 				""").user(prompt).call().content();
 		return new RagResponse(answer);
+	}
+	
+	public String chat(String userMessage) {
+		String prompt = """
+				You are a helpful assistant.
+
+				User: %s
+				""".formatted(userMessage);
+		logger.info("=========== PROMPT ===========");
+		logger.info(prompt);
+		logger.info("==============================");
+		String answer = chatClient.prompt().system("""
+				    You are a helpful assistant.
+				""").user(prompt).call().content();
+		return answer;
 	}
 }
