@@ -41,12 +41,15 @@ public class OrderServiceImpl implements OrderService {
 	@Override
 	public Order createOrder(OrderRequestDTO dto) {
 
+		logger.info("Calling product service to fetch product details for productId: {}", dto.getProductId());
 		Product product = productClient.getProductById(dto.getProductId());
+		logger.info("product: ", product);
 
 		if (product == null) {
 			logger.error("Product not found with ID: {}", dto.getProductId());
 			throw new ProductNotFoundException("Product not found");
 		}
+		logger.info("creating order");
 
 		// 1. Create Order
 		Order order = new Order();
@@ -72,6 +75,7 @@ public class OrderServiceImpl implements OrderService {
 		order.setFraudRiskLevel(result.getFraudRiskLevel());
 
 		// 5. AI explanation
+		logger.info("Calling AI service to get explanation for fraud risk level: {}", result.getFraudRiskLevel());
 		FraudResponse aiResponse = aiClient.checkFraud(
 		    new FraudCheckRequest(
 		        order.getCustomerAge(),
@@ -86,6 +90,7 @@ public class OrderServiceImpl implements OrderService {
 		order.setRecommendation(aiResponse.getRecommendation());
 
 		// 6. Save order
+		logger.info("Saving order to the database");
 		Order savedOrder = orderRepository.save(order);
 
 		// 7. Generate short URL (needs generated ID)
