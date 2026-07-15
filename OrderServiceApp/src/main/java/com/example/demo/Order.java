@@ -1,8 +1,9 @@
 package com.example.demo;
+
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -11,6 +12,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -24,6 +26,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Order {
 
     @Id
@@ -60,9 +63,10 @@ public class Order {
     @Column(length = 1000)
     private String recommendation;
 
-    @OneToMany(mappedBy = "order",
+    @OneToMany(
             cascade = CascadeType.ALL,
-            fetch = FetchType.EAGER)
-    @JsonManagedReference
+            fetch = FetchType.EAGER,
+            orphanRemoval = true)
+    @JoinColumn(name = "order_id")
     private List<OrderItem> items;
 }
