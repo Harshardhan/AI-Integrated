@@ -64,9 +64,7 @@ public class Order {
     private String recommendation;
 
     @OneToMany(
-            cascade = CascadeType.ALL,
-            fetch = FetchType.EAGER,
-            orphanRemoval = true)
-    @JoinColumn(name = "order_id")
-    private List<OrderItem> items;
-}
+    	    cascade = CascadeType.ALL
+    	)
+    	@JoinColumn(name = "order_id")
+    	private List<OrderItem> items;}
