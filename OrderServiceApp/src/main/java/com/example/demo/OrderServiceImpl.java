@@ -1,8 +1,6 @@
 package com.example.demo;
 
 import java.math.BigDecimal;
-import java.util.concurrent.CompletableFuture;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -41,72 +39,83 @@ public class OrderServiceImpl implements OrderService {
 	@Override
 	public Order createOrder(OrderRequestDTO dto) {
 
-		logger.info("Calling product service to fetch product details for productId: {}", dto.getProductId());
-		Product product = productClient.getProductById(dto.getProductId());
-		logger.info("product: ", product);
+		try {
 
-		if (product == null) {
-			logger.error("Product not found with ID: {}", dto.getProductId());
-			throw new ProductNotFoundException("Product not found");
+			logger.info("========== CREATE ORDER START ==========");
+
+			logger.info("STEP-1 Calling Product Service. ProductId={}", dto.getProductId());
+
+			Product product = productClient.getProductById(dto.getProductId());
+
+			logger.info("STEP-2 Product Response={}", product);
+
+			if (product == null) {
+				throw new ProductNotFoundException("Product not found");
+			}
+
+			logger.info("STEP-3 Product Price={}", product.getPrice());
+
+			Order order = new Order();
+
+			order.setProductId(dto.getProductId());
+			order.setCustomerName(dto.getCustomerName());
+			order.setCustomerAge(dto.getCustomerAge());
+			order.setPreviousOrders(dto.getPreviousOrders());
+			order.setQuantity(dto.getQuantity());
+			order.setMobileNumber(dto.getMobileNumber());
+			order.setDescription(dto.getDescription());
+			order.setItems(dto.getItems());
+
+			order.setAmount(product.getPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
+
+			logger.info("STEP-4 Amount={}", order.getAmount());
+
+			FraudResult result = checkFraudRisk(dto);
+
+			logger.info("STEP-5 Fraud Result={}", result);
+
+			FraudResponse aiResponse = aiClient.checkFraud(new FraudCheckRequest(order.getCustomerAge(),
+					order.getPreviousOrders(), order.getAmount(), result.getFraudRiskLevel(), result.getRiskScore()));
+
+			logger.info("STEP-6 AI Response={}", aiResponse);
+
+			order.setFraudReason(aiResponse.getReason());
+			order.setRecommendation(aiResponse.getRecommendation());
+
+			logger.info("STEP-7 Saving Order");
+
+			Order savedOrder = orderRepository.save(order);
+
+			logger.info("STEP-8 Order Saved={}", savedOrder.getId());
+
+			String longUrl = "http://api-gateway:8080/api/orders/" + savedOrder.getId();
+
+			logger.info("STEP-9 Calling URL Shortener");
+
+			String shortUrl = urlShortenerClient.shortenURL(new UrlRequest(longUrl));
+
+			logger.info("STEP-10 Short URL={}", shortUrl);
+
+			savedOrder.setShortURL(shortUrl);
+
+			savedOrder = orderRepository.save(savedOrder);
+
+			logger.info("STEP-11 Publishing Kafka Event");
+
+			publishOrderEvent(savedOrder);
+
+			logger.info("========== CREATE ORDER SUCCESS ==========");
+
+			return savedOrder;
+
+		} catch (Exception e) {
+
+			logger.error("ORDER CREATION FAILED", e);
+
+			throw e;
 		}
-		logger.info("creating order");
-
-		// 1. Create Order
-		Order order = new Order();
-
-		// 2. Set fields
-		order.setProductId(dto.getProductId());
-		order.setCustomerName(dto.getCustomerName());
-		order.setCustomerAge(dto.getCustomerAge());
-		order.setPreviousOrders(dto.getPreviousOrders());
-		order.setQuantity(dto.getQuantity());
-		order.setMobileNumber(dto.getMobileNumber());
-		order.setDescription(dto.getDescription());
-		order.setItems(dto.getItems());
-		order.setAmount(product.getPrice().multiply(BigDecimal.valueOf(dto.getQuantity())));
-		
-
-		// 3. Calculate amount
-
-		// 4. Calculate fraud score
-		FraudResult result = checkFraudRisk(dto);
-
-		order.setRiskScore(result.getRiskScore());
-		order.setFraudRiskLevel(result.getFraudRiskLevel());
-
-		// 5. AI explanation
-		logger.info("Calling AI service to get explanation for fraud risk level: {}", result.getFraudRiskLevel());
-		FraudResponse aiResponse = aiClient.checkFraud(
-		    new FraudCheckRequest(
-		        order.getCustomerAge(),
-		        order.getPreviousOrders(),
-		        order.getAmount(),
-		        result.getFraudRiskLevel(),
-		        result.getRiskScore()
-		    )
-		);
-
-		order.setFraudReason(aiResponse.getReason());
-		order.setRecommendation(aiResponse.getRecommendation());
-
-		// 6. Save order
-		logger.info("Saving order to the database");
-		Order savedOrder = orderRepository.save(order);
-
-		// 7. Generate short URL (needs generated ID)
-		String longUrl = "http://api-gateway:8080/api/orders/" + savedOrder.getId();
-		String shortUrl = urlShortenerClient.shortenURL(new UrlRequest(longUrl));
-
-		savedOrder.setShortURL(shortUrl);
-
-		// 8. Save again to update short URL
-		savedOrder = orderRepository.save(savedOrder);
-
-		// 9. Publish event
-		publishOrderEvent(savedOrder);
-
-		return savedOrder;
 	}
+
 	private FraudResult checkFraudRisk(OrderRequestDTO dto) {
 
 		int score = 0;
