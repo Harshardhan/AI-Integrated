@@ -295,7 +295,6 @@ public class UserServiceImpl implements UserService {
 		});
 
 		user.setStatus(UserStatus.ACTIVE);
-		user.setActive(true);
 		userRepository.save(user);
 
 		logger.info("Activated user with email: {}", emailId);
