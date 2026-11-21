@@ -81,7 +81,6 @@ public class UserServiceImpl implements UserService {
 		user.setStatus(UserStatus.PENDING_VERIFICATION);
 
 		// Default flags
-		user.setActive(false);
 		user.setLocked(false);
 		user.setExpired(false);
 
