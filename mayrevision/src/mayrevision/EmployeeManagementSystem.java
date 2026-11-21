@@ -1,7 +1,7 @@
 package mayrevision;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -11,40 +11,41 @@ public class EmployeeManagementSystem {
 
 		List<Employee> employeeList = new ArrayList<>();
 
-		employeeList.add(new Employee("John Doe", 1, "IT", 50000, "Software Engineer"));
-		employeeList.add(new Employee("Jane Smith", 2, "HR", 45000, "HR Manager"));
-		employeeList.add(new Employee("Alice Johnson", 3, "Finance", 55000, "Financial Analyst"));
-		employeeList.add(new Employee("Bob Brown", 4, "IT", 60000, "Senior Software Engineer"));
-		employeeList.add(new Employee("Charlie Davis", 5, "Marketing", 40000, "Marketing Specialist"));
-		employeeList.add(new Employee("Eve Wilson", 6, "HR", 48000, "Recruiter"));
-		employeeList.add(new Employee("Frank Miller", 7, "Finance", 52000, "Accountant"));
+		// Adding employees to the list
+		employeeList.add(new Employee(101, "John", "IT", 90000.00, 5, 6));
+		employeeList.add(new Employee(102, "David", "HR", 65000.00, 4, 5));
+		employeeList.add(new Employee(103, "Smith", "IT", 120000.00, 5, 8));
+		employeeList.add(new Employee(104, "Alice", "Finance", 80000.00, 2, 7));
+		employeeList.add(new Employee(105, "Emma", "HR", 70000.00, 5, 6));
+		employeeList.add(new Employee(106, "Chris", "Finance", 95000.00, 4, 9));
+		employeeList.add(new Employee(107, "Bob", "IT", 85000.00, 3, 4));
+		employeeList.add(new Employee(108, "Nancy", "Finance", 100000.00, 5, 10));
+		employeeList.add(new Employee(109, "Kevin", "HR", 60000.00, 1, 3));
+		employeeList.add(new Employee(110, "Peter", "IT", 150000.00, 5, 12));
 
-		// Highest salary employee
-		Employee highestSalaryEmployee = employeeList.stream()
-				.max(Comparator.comparingDouble(Employee::getEmployeeSalary)).orElse(null);
-		if (highestSalaryEmployee != null) {
-			System.out.println("Highest Salary Employee: " + highestSalaryEmployee.getEmployeeName() + " - "
-					+ highestSalaryEmployee.getEmployeeSalary());
-		}
+		// Group employees by department , ignore emmployees whose rating is less than
+		// 3, for every department: Find highest Salary and average salary, count the
+		// number of eligible employees, sort department based on average salary(highest
+		// first)
+		employeeList.stream().filter(e -> e.getRating() >= 3)
+				.collect(Collectors.groupingBy(Employee::getEmployeeDepartment)).entrySet().stream()
+				.sorted((e1, e2) -> Double.compare(
+						e2.getValue().stream().mapToDouble(Employee::getEmployeeSalary).average().orElse(0),
+						e1.getValue().stream().mapToDouble(Employee::getEmployeeSalary).average().orElse(0)))
+				.forEach(entry -> {
+					String department = entry.getKey();
+					List<Employee> employees = entry.getValue();
+					double highestSalary = employees.stream().mapToDouble(Employee::getEmployeeSalary).max().orElse(0);
+					double averageSalary = employees.stream().mapToDouble(Employee::getEmployeeSalary).average()
+							.orElse(0);
+					long eligibleCount = employees.size();
 
-		// Group employees by department
-		employeeList.stream().collect(Collectors.groupingBy(Employee::getEmployeeDepartment))
-				.forEach((department, employees) -> {
 					System.out.println("Department: " + department);
-					employees.forEach(employee -> System.out.println(" - " + employee.getEmployeeName()));
+					System.out.println("Highest Salary: " + highestSalary);
+					System.out.println("Average Salary: " + averageSalary);
+					System.out.println("Eligible Employees Count: " + eligibleCount);
+					System.out.println();
 				});
-
-		// Sort employees by salary in descending order
-		employeeList.stream().sorted(Comparator.comparingDouble(Employee::getEmployeeSalary).reversed()).forEach(
-				employee -> System.out.println(employee.getEmployeeName() + " - " + employee.getEmployeeSalary()));
-
-		// Average salary of employees
-		double averageSalary = employeeList.stream().mapToDouble(Employee::getEmployeeSalary).average().orElse(0);
-		System.out.println("Average Salary: " + averageSalary);
-
-		// Filter employees by salary greater than 50000
-		employeeList.stream().filter(employee -> employee.getEmployeeSalary() > 50000).forEach(
-				employee -> System.out.println(employee.getEmployeeName() + " - " + employee.getEmployeeSalary()));
 
 	}
 }

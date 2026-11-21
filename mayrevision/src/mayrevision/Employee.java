@@ -1,16 +1,22 @@
 package mayrevision;
 
+import java.util.Objects;
+
 public class Employee {
 
-	private String employeeName;
 	
 	private int employeeId;
+	
+	private String employeeName;
+
 	
 	private String employeeDepartment;
 	
 	private double employeeSalary;
 	
-	private String employeeDesignation;
+	private int experience;
+	
+	private int  rating;
 
 	public String getEmployeeName() {
 		return employeeName;
@@ -44,30 +50,39 @@ public class Employee {
 		this.employeeSalary = employeeSalary;
 	}
 
-	public String getEmployeeDesignation() {
-		return employeeDesignation;
+	public int getExperience() {
+		return experience;
 	}
 
-	public void setEmployeeDesignation(String employeeDesignation) {
-		this.employeeDesignation = employeeDesignation;
+	public void setExperience(int experience) {
+		this.experience = experience;
 	}
 
-	public Employee(String employeeName, int employeeId, String employeeDepartment, double employeeSalary,
-			String employeeDesignation) {
+	public int getRating() {
+		return rating;
+	}
+
+	public void setRating(int rating) {
+		this.rating = rating;
+	}
+
+	public Employee(int employeeId, String employeeName, String employeeDepartment, double employeeSalary,
+			int experience, int rating) {
 		super();
-		this.employeeName = employeeName;
 		this.employeeId = employeeId;
+		this.employeeName = employeeName;
 		this.employeeDepartment = employeeDepartment;
 		this.employeeSalary = employeeSalary;
-		this.employeeDesignation = employeeDesignation;
+		this.experience = experience;
+		this.rating = rating;
 	}
 
 	@Override
 	public String toString() {
-		return "Employee [employeeName=" + employeeName + ", employeeId=" + employeeId + ", employeeDepartment="
-				+ employeeDepartment + ", employeeSalary=" + employeeSalary + ", employeeDesignation="
-				+ employeeDesignation + "]";
+		return "Employee [employeeId=" + employeeId + ", employeeName=" + employeeName + ", employeeDepartment="
+				+ employeeDepartment + ", employeeSalary=" + employeeSalary + ", experience=" + experience + ", rating="
+				+ rating + "]";
 	}
-	
-	
+
+		
 }

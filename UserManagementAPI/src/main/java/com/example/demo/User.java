@@ -41,6 +41,7 @@ public class User {
 	private String email;
 
 
+	@Column(nullable = false)
 	private String password;
 
 	private String firstName;
@@ -54,7 +55,7 @@ public class User {
 	
 	private String otp;
 
-	@ManyToMany(fetch = FetchType.EAGER)
+	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(
 	    name = "user_roles",
 	    joinColumns = @JoinColumn(name = "user_id"),
@@ -62,7 +63,6 @@ public class User {
 	)
 	private Set<Role> roles = new HashSet<>();
 	
-	private boolean active;
 
 	private boolean locked;
 

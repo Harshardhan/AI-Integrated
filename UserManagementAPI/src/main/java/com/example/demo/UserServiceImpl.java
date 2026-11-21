@@ -191,7 +191,7 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	@CacheEvict(value = "users", key = "#userId")
+	@CacheEvict(value = "userById", key = "#userId")
 
 	public void deleteUser(Long id) {
 
