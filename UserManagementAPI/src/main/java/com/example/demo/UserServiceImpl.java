@@ -81,6 +81,7 @@ public class UserServiceImpl implements UserService {
 		user.setStatus(UserStatus.PENDING_VERIFICATION);
 
 		// Default flags
+		user.setActive(false);
 		user.setLocked(false);
 		user.setExpired(false);
 
@@ -294,6 +295,7 @@ public class UserServiceImpl implements UserService {
 			return new UserNotFoundException("User not found with email: " + emailId);
 		});
 
+		user.setActive(true);
 		user.setStatus(UserStatus.ACTIVE);
 		userRepository.save(user);
 
