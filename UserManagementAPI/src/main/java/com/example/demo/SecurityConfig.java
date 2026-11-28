@@ -77,7 +77,6 @@ public class SecurityConfig {
         System.out.println("Allowed Origins: " + configuration.getAllowedOrigins());
 
         return source;
-        return source;
     }
 
     @Bean
