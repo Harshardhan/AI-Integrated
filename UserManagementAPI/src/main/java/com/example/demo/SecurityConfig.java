@@ -70,8 +70,13 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source =
             new UrlBasedCorsConfigurationSource();
 
+
         source.registerCorsConfiguration("/**", configuration);
 
+        System.out.println("========== CORS CONFIGURATION LOADED ==========");
+        System.out.println("Allowed Origins: " + configuration.getAllowedOrigins());
+
+        return source;
         return source;
     }
 
