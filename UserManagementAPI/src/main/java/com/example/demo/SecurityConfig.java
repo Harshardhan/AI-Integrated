@@ -13,11 +13,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 @Configuration
 @EnableWebSecurity
@@ -34,44 +33,58 @@ public class SecurityConfig {
 
         http
             .cors(Customizer.withDefaults())
-
             .csrf(csrf -> csrf.disable())
-
             .authorizeHttpRequests(auth -> auth
-
-                // Allow CORS preflight requests
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                // Public authentication endpoint
                 .requestMatchers("/api/auth/login").permitAll()
-
-                // Public user registration
                 .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
-
-                // Public roles endpoint for registration dropdown
                 .requestMatchers(HttpMethod.GET, "/api/v1/roles").permitAll()
-
-                // Admin-only delete
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**")
-                .hasAuthority("ROLE_ADMIN")
-
-                // Admin and user access
-                .requestMatchers(HttpMethod.GET, "/api/v1/users/**")
-                .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER")
-
-                .requestMatchers(HttpMethod.PUT, "/api/v1/users/**")
-                .hasAnyAuthority("ROLE_ADMIN", "ROLE_USER")
-
-                // Everything else requires authentication
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/v1/users/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_USER")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/users/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_USER")
                 .anyRequest().authenticated()
             )
-
             .addFilterBefore(
                 jwtAuthenticationFilter,
                 UsernamePasswordAuthenticationFilter.class
             );
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        configuration.setAllowedMethods(
+            List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        );
+
+        configuration.setAllowedHeaders(List.of("*"));
+
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+            new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JWTAuthenticationFilter> jwtFilterRegistration(
+            JWTAuthenticationFilter filter) {
+
+        FilterRegistrationBean<JWTAuthenticationFilter> registration =
+            new FilterRegistrationBean<>(filter);
+
+        registration.setEnabled(false);
+
+        return registration;
     }
 
     @Bean
@@ -85,23 +98,4 @@ public class SecurityConfig {
 
         return config.getAuthenticationManager();
     }
-    @Bean
-    public FilterRegistrationBean<JWTAuthenticationFilter> jwtFilterRegistration(
-            JWTAuthenticationFilter filter) {
-
-        FilterRegistrationBean<JWTAuthenticationFilter> registration =
-                new FilterRegistrationBean<>(filter);
-
-        registration.setEnabled(false);
-
-        return registration;
-    }
-    
-	
-	@Override
-	protected boolean shouldNotFilter(HttpServletRequest request) {
-
-	    return "OPTIONS".equalsIgnoreCase(request.getMethod());
-	}
-
 }
